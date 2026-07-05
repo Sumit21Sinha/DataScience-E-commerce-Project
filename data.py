@@ -16,3 +16,12 @@ sellers = pd.read_csv(r"C:\Users\Sumit Sinha\Desktop\DataScience E-Commerce Proj
 product_cat = pd.read_csv(r"C:\Users\Sumit Sinha\Desktop\DataScience E-Commerce Project\DataSets\product_category_name_translation.csv")
 
 #Statistics and data cleaning
+print("Customers :", customers.isnull().sum(), customers.describe())
+print("geolocation :", geolocation.isnull().sum(), geolocation.describe())
+print("orderitems :", orderitems.isnull().sum(), orderitems.describe())
+print("payments :", payments.isnull().sum(), payments.describe())
+print("reviews :", reviews.isnull().sum(), reviews.describe())
+print("orders :", orders.isnull().sum(), orders.describe())
+print("products :", products.isnull().sum(), products.describe())
+print("sellers :", sellers.isnull().sum(), sellers.describe())
+print("product_cat :", product_cat.isnull().sum(), product_cat.describe())
