@@ -8,6 +8,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 #Importing all the CSVs
 customers = pd.read_csv(r"C:\Users\Sumit Sinha\Desktop\DataScience E-Commerce Project\DataSets\olist_customers_dataset.csv")
@@ -130,10 +132,10 @@ param_grid = {"max_depth": [3, 5, 7, 10, 15, 20],"min_samples_split": [2, 5, 10,
 '''dt2 = DecisionTreeRegressor(random_state=42)
 grid = GridSearchCV(estimator=dt2, param_grid=param_grid, scoring="r2", cv=5)
 grid.fit(x_train, y_train)
-print(grid.best_params_) #{'max_depth': 10, 'min_samples_leaf': 10, 'min_samples_split': 2}'''
+print(grid.best_params_) #{'max_depth': 10, 'min_samples_leaf': 10, 'min_samples_split': 2}
 dt3 = DecisionTreeRegressor(max_depth=10, min_samples_split=2, min_samples_leaf=10, random_state=42)
 dt3.fit(x_train, y_train)
-print(dt3.score(x_test, y_test)) #28
+print(dt3.score(x_test, y_test)) #28'''
 
 # ---Working on Outliers---
 Q1 = reg_data["delivery_days"].quantile(0.25)
@@ -157,11 +159,58 @@ scaler = StandardScaler()
 x_train[numerical_features] = scaler.fit_transform(x_train[numerical_features])
 x_test[numerical_features] = scaler.transform(x_test[numerical_features])
 # ---Linear Regression---
-lr = LinearRegression()
+'''lr = LinearRegression()
 lr.fit(x_train, y_train)
 print("Re-created Linear Regression :", lr.score(x_test, y_test)) #26%
 dt = DecisionTreeRegressor(max_depth=10,min_samples_leaf=10,min_samples_split=2,random_state=42)
 dt.fit(x_train, y_train)
-print("Re-created Decision Tree :", dt.score(x_test, y_test)) #36%
+print("Re-created Decision Tree :", dt.score(x_test, y_test)) #36%'''
 
 #Re-feature Engineering
+reg_data["product_volume"] = reg_data["product_length_cm"]*reg_data["product_width_cm"]*reg_data["product_height_cm"]
+reg_data["product_density"] = reg_data["product_weight_g"]/reg_data["product_volume"]
+reg_data["freight_ratio"] = reg_data["freight_value"]/reg_data["price"]
+reg_data["same_state"] = (reg_data["customer_state"] == reg_data["seller_state"]).astype(int)
+reg_data["is_expensive"] = (reg_data["price"]>reg_data["price"].median()).astype(int)
+
+numerical_features = ["price","freight_value","payment_value","payment_installments",
+    "product_weight_g","product_length_cm","product_height_cm","product_width_cm","approval_days","purchase_month",
+    "purchase_day","purchase_hour","purchase_quarter","product_volume","product_density","freight_ratio"]
+categorical_features = ["is_weekend","customer_state","seller_state",
+    "payment_type","product_category_name_english","same_state","is_expensive"]
+x = reg_data[numerical_features + categorical_features]
+
+x = reg_data[numerical_features + categorical_features]
+y = reg_data["delivery_days"]
+
+x = pd.get_dummies(x,columns=categorical_features,drop_first=True,dtype=int)
+
+x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.2,random_state=42)
+
+scaler = StandardScaler()
+x_train[numerical_features] = scaler.fit_transform(x_train[numerical_features])
+x_test[numerical_features] = scaler.transform(x_test[numerical_features])
+#Model Training - Random Forest
+'''param_grid = {"n_estimators": [100, 200], "max_depth": [10, 15], "min_samples_split": [2, 5, 10], "min_samples_leaf": [1, 2, 5]}
+grid_rf = GridSearchCV(estimator=RandomForestRegressor(random_state=42),param_grid=param_grid,cv=4, n_jobs=-1, verbose=2)
+grid_rf.fit(x_train, y_train)
+print(grid_rf.best_params_)
+print(grid_rf.best_score_)
+best_rf = grid_rf.best_estimator_
+print(best_rf.score(x_test, y_test))'''
+
+# ---Improvised RF model now---
+rf2=RandomForestRegressor(random_state=42, max_depth=15, min_samples_split=2, min_samples_leaf=2, n_estimators=200)
+rf2.fit(x_train, y_train)
+print(rf2.score(x_test, y_test)) #45%
+
+pred = rf2.predict(x_test)
+print("R²:", rf2.score(x_test, y_test))
+print("MAE:", mean_absolute_error(y_test, pred))
+print("RMSE:", np.sqrt(mean_squared_error(y_test, pred)))
+0.44508661603339084
+R²: 0.44508661603339084
+MAE: 3.9784656460480985
+RMSE: 5.558143537919628
+
+#Classification Model
