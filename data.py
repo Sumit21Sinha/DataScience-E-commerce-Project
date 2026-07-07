@@ -213,3 +213,13 @@ dropcol = ["delivery_days", "delivery_delay", "order_delivered_customer_date", "
 clf_data.drop(columns=dropcol, inplace=True)
 
 #Feature Selection
+numerical_features = ["distance_km","total_price","total_freight","payment_value","payment_installments","total_weight",
+    "avg_weight","max_weight","total_volume","avg_volume","avg_length","avg_width","avg_height",
+    "max_length","max_width","max_height","approval_days","estimated_delivery_days","purchase_month","purchase_day","purchase_hour",
+    "purchase_quarter","num_items","num_sellers","freight_ratio","weight_per_item","volume_per_item","price_per_item","freight_per_item"]
+categorical_features = ["customer_state","seller_state","product_category_name_english","is_weekend","same_state","is_expensive"]
+
+X = clf_data[numerical_features + categorical_features]
+y = clf_data["late_delivery"]
+
+#Encoding
