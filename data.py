@@ -10,6 +10,7 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from xgboost import XGBRegressor
 
 #Importing all the CSVs
 customers = pd.read_csv(r"C:\Users\Sumit Sinha\Desktop\DataScience E-Commerce Project\DataSets\olist_customers_dataset.csv")
@@ -30,10 +31,16 @@ files = [customers, geolocation, orderitems, payments, reviews, orders, products
     print(file.info())
     print(file.describe())'''
 
+orderitems_agg = orderitems.groupby("order_id").agg({"price": "sum", "freight_value": "sum", "product_id": "count", "seller_id": "nunique"
+}).rename(columns={"product_id": "num_items", "seller_id": "num_sellers"}).reset_index()
+payments_agg = payments.groupby("order_id").agg({"payment_value": "sum", "payment_installments": "max", "payment_type": lambda x: x.mode()[0]}).reset_index()
+
 #Master table merging
 master = orders.merge(customers, on="customer_id", how="left")
 #print(master.shape)
-master = master.merge(orderitems, on="order_id", how="left")
+master = master.merge(orderitems_agg, on="order_id", how="left")
+master = master.merge(
+    orderitems[["order_id","product_id","seller_id"]].drop_duplicates("order_id"), on="order_id", how="left")
 #print(master.shape)
 master = master.merge(products, on="product_id", how="left")
 #print(master.shape)
@@ -41,7 +48,7 @@ master = master.merge(product_cat, on="product_category_name", how="left")
 #print(master.shape)
 master = master.merge(sellers, on="seller_id", how="left")
 #print(master.shape)
-master = master.merge(payments, on="order_id", how="left")
+master = master.merge(payments_agg, on="order_id", how="left")
 #print(master.shape)
 #print(master["order_id"].nunique())
 #print(master["order_id"].duplicated().sum())
@@ -59,7 +66,6 @@ print(master[master["order_delivered_customer_date"].isnull()]["order_status"].v
 print(master[(master["order_status"] == "delivered") &(master["order_delivered_customer_date"].isnull())
 ][["order_id", "order_purchase_timestamp", "order_estimated_delivery_date", "order_delivered_customer_date"]])'''
 master = master.drop(master[(master["order_status"] == "delivered") & (master["order_delivered_customer_date"].isnull())].index)
-master["shipping_limit_date"] = pd.to_datetime(master["shipping_limit_date"])
 
 #Feature Engineering
 master["purchase_year"] = master["order_purchase_timestamp"].dt.year
@@ -94,9 +100,9 @@ plt.show()'''
 reg_data=master.copy()
 # ---Feature Selection---
 reg_data = reg_data[reg_data["order_status"] == "delivered"].copy()
-numerical_features = ["price","freight_value","payment_value","payment_installments","product_weight_g",
+numerical_features = ["price","freight_value","estimated_delivery_days", "payment_value","payment_installments","product_weight_g",
     "product_length_cm","product_height_cm","product_width_cm","approval_days","purchase_month",
-    "purchase_day","purchase_hour","purchase_quarter"]
+    "purchase_day","purchase_hour","purchase_quarter", "num_items", "num_sellers"]
 categorical_features = ["is_weekend","customer_state","seller_state","payment_type","product_category_name_english"]
 reg_data["product_category_name_english"]=reg_data["product_category_name_english"].fillna("Unknown")
 reg_data=reg_data.dropna()
@@ -120,13 +126,13 @@ x_test[numerical_features] = scaler.transform(x_test[numerical_features])
 # ---Training---
 lr = LinearRegression()
 lr.fit(x_train, y_train)
-'''print("Linear Regression gives an accuracy of :", lr.score(x_test, y_test)) #21%'''
+print("Linear Regression gives an accuracy of :", lr.score(x_test, y_test)) #21%
 dt = DecisionTreeRegressor(random_state=42)
 dt.fit(x_train, y_train)
-'''print("Decision Tree gives an accuracy of :", dt.score(x_test, y_test)) #overfitting(-6%)
+print("Decision Tree gives an accuracy of :", dt.score(x_test, y_test)) #overfitting(-6%)
 print("Linear Regression on train :", lr.score(x_train, y_train)) #21%
 print("Decision Tree on train :", dt.score(x_train, y_train)) #99%(overfitting)
-print(reg_data["delivery_days"].describe())'''
+print(reg_data["delivery_days"].describe())
 # ---DecisionTree tuning(Depth)---
 param_grid = {"max_depth": [3, 5, 7, 10, 15, 20],"min_samples_split": [2, 5, 10, 20],"min_samples_leaf": [1, 2, 5, 10]}
 '''dt2 = DecisionTreeRegressor(random_state=42)
@@ -159,15 +165,15 @@ scaler = StandardScaler()
 x_train[numerical_features] = scaler.fit_transform(x_train[numerical_features])
 x_test[numerical_features] = scaler.transform(x_test[numerical_features])
 # ---Linear Regression---
-'''lr = LinearRegression()
+lr = LinearRegression()
 lr.fit(x_train, y_train)
 print("Re-created Linear Regression :", lr.score(x_test, y_test)) #26%
-dt = DecisionTreeRegressor(max_depth=10,min_samples_leaf=10,min_samples_split=2,random_state=42)
+dt = DecisionTreeRegressor(max_depth=10, min_samples_leaf=10, min_samples_split=2, random_state=42)
 dt.fit(x_train, y_train)
-print("Re-created Decision Tree :", dt.score(x_test, y_test)) #36%'''
+print("Re-created Decision Tree :", dt.score(x_test, y_test)) #36%
 
 #Re-feature Engineering
-reg_data["product_volume"] = reg_data["product_length_cm"]*reg_data["product_width_cm"]*reg_data["product_height_cm"]
+'''reg_data["product_volume"] = reg_data["product_length_cm"]*reg_data["product_width_cm"]*reg_data["product_height_cm"]
 reg_data["product_density"] = reg_data["product_weight_g"]/reg_data["product_volume"]
 reg_data["freight_ratio"] = reg_data["freight_value"]/reg_data["price"]
 reg_data["same_state"] = (reg_data["customer_state"] == reg_data["seller_state"]).astype(int)
@@ -191,13 +197,13 @@ scaler = StandardScaler()
 x_train[numerical_features] = scaler.fit_transform(x_train[numerical_features])
 x_test[numerical_features] = scaler.transform(x_test[numerical_features])
 #Model Training - Random Forest
-'''param_grid = {"n_estimators": [100, 200], "max_depth": [10, 15], "min_samples_split": [2, 5, 10], "min_samples_leaf": [1, 2, 5]}
+param_grid = {"n_estimators": [100, 200], "max_depth": [10, 15], "min_samples_split": [2, 5, 10], "min_samples_leaf": [1, 2, 5]}
 grid_rf = GridSearchCV(estimator=RandomForestRegressor(random_state=42),param_grid=param_grid,cv=4, n_jobs=-1, verbose=2)
 grid_rf.fit(x_train, y_train)
 print(grid_rf.best_params_)
 print(grid_rf.best_score_)
 best_rf = grid_rf.best_estimator_
-print(best_rf.score(x_test, y_test))'''
+print(best_rf.score(x_test, y_test))
 
 # ---Improvised RF model now---
 rf2=RandomForestRegressor(random_state=42, max_depth=15, min_samples_split=2, min_samples_leaf=2, n_estimators=200)
@@ -205,12 +211,22 @@ rf2.fit(x_train, y_train)
 print(rf2.score(x_test, y_test)) #45%
 
 pred = rf2.predict(x_test)
-print("R²:", rf2.score(x_test, y_test))
-print("MAE:", mean_absolute_error(y_test, pred))
-print("RMSE:", np.sqrt(mean_squared_error(y_test, pred)))
-0.44508661603339084
-R²: 0.44508661603339084
-MAE: 3.9784656460480985
-RMSE: 5.558143537919628
+print("R²:", rf2.score(x_test, y_test)) 0.44508661603339084
+print("MAE:", mean_absolute_error(y_test, pred)) #3.9784656460480985
+print("RMSE:", np.sqrt(mean_squared_error(y_test, pred))) #5.558143537919628
+
+# XGBoost
+xgb = XGBRegressor(
+    random_state=42,
+    n_estimators=200,
+    learning_rate=0.1,
+    max_depth=6,
+    subsample=0.8,
+    colsample_bytree=0.8
+)
+
+xgb.fit(x_train, y_train)
+
+print("R² :", xgb.score(x_test, y_test))''' #R² : 0.4397151109394416
 
 #Classification Model
