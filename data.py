@@ -7,11 +7,17 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.metrics import r2_score
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import root_mean_squared_error
 from xgboost import XGBRegressor
+from imblearn.over_sampling import SMOTE
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 
 #Importing Datasets
 customers = pd.read_csv(r"C:\Users\Sumit Sinha\Desktop\DataScience E-Commerce Project\DataSets\olist_customers_dataset.csv")
@@ -205,9 +211,9 @@ print("XGBoost stat :",xgb.score(X_test, y_test))'''
 #Classification Model
 #Column creation for classification
 clf_data["late_delivery"] = (clf_data["delivery_delay"] > 0).astype(int)
-print(clf_data["late_delivery"].value_counts())
+'''print(clf_data["late_delivery"].value_counts())
 print()
-print(clf_data["late_delivery"].value_counts(normalize=True))
+print(clf_data["late_delivery"].value_counts(normalize=True))'''
 
 dropcol = ["delivery_days", "delivery_delay", "order_delivered_customer_date", "order_estimated_delivery_date", "order_delivered_carrier_date"]
 clf_data.drop(columns=dropcol, inplace=True)
@@ -223,3 +229,83 @@ X = clf_data[numerical_features + categorical_features]
 y = clf_data["late_delivery"]
 
 #Encoding
+X = pd.get_dummies(X, columns=categorical_features, drop_first=True, dtype=int)
+'''print(X.shape)'''
+
+#Train-Test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=y)
+
+#Scaling
+scaler = StandardScaler()
+X_train[numerical_features] = scaler.fit_transform(X_train[numerical_features])
+X_test[numerical_features] = scaler.transform(X_test[numerical_features])
+
+smote = SMOTE(random_state=42)
+X_train, y_train = smote.fit_resample(X_train, y_train)
+'''print(y_train.value_counts())'''
+
+#Logistic Regression
+'''lr = LogisticRegression(random_state=42, max_iter=1000)
+lr.fit(X_train, y_train)
+print(lr.score(X_test, y_test))
+y_pred = lr.predict(X_test)
+print(classification_report(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred))'''
+'''[[16802  1093]
+    [ 1065   233]]'''
+
+#Decision Tree
+'''dt = DecisionTreeClassifier(random_state=42)
+dt.fit(X_train, y_train)
+y_pred = dt.predict(X_test)
+print(classification_report(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred))
+print("Train Accuracy :", dt.score(X_train, y_train))
+print("Test Accuracy :", dt.score(X_test, y_test))'''
+'''[[16400  1495]
+    [  968   330]]'''
+
+#Tuning Decision Tree
+'''param_grid = {"max_depth": [5, 8, 10, 15], "min_samples_split": [2, 5, 10], "min_samples_leaf": [1, 2, 5]}
+cv = StratifiedKFold(n_splits=4, shuffle=True, random_state=42)
+grid = GridSearchCV(estimator=DecisionTreeClassifier(random_state=42), param_grid=param_grid, scoring="r2", cv=cv, n_jobs=-1, verbose=2)
+grid.fit(X_train, y_train)
+best_dt = grid.best_estimator_
+y_pred = best_dt.predict(X_test)
+print(classification_report(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred))'''
+'''[[16260  1635]
+    [  810   488]]'''
+
+#Random Forest
+'''rf = RandomForestClassifier(random_state=42, n_estimators=100, n_jobs=-1)
+rf.fit(X_train, y_train)
+y_pred=rf.predict(X_test)
+print(classification_report(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred))'''
+'''[[17568   327]
+     [ 1083   215]]'''
+
+#XGBoost
+'''xgb = XGBClassifier(random_state=42,n_estimators=200,max_depth=6,learning_rate=0.1,objective="binary:logistic",eval_metric="logloss")
+xgb.fit(X_train, y_train)
+y_pred = xgb.predict(X_test)
+y_prob = xgb.predict_proba(X_test)[:, 1]
+print(classification_report(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred))'''
+'''[[17593   302]
+    [ 1097   201]]'''
+
+#Tuning Random Forest at Threshold 0.3
+param_grid = {"n_estimators": [100, 200], "max_depth": [10, 15, 20], "min_samples_split": [2, 5], "min_samples_leaf": [1, 2, 5]}
+cv = StratifiedKFold(n_splits=4, shuffle=True, random_state=42)
+grid_rf = GridSearchCV(estimator=RandomForestClassifier(random_state=42,n_jobs=-1), param_grid=param_grid,scoring="f1",cv=cv,n_jobs=-1,verbose=2)
+grid_rf.fit(X_train, y_train)
+print(grid_rf.best_params)
+print(grid_rf.best_score_)
+best_rf = grid_rf.best_estimator_
+rf_prob = best_rf.predict_proba(X_test)[:, 1]
+threshold = 0.3
+y_pred = (rf_prob >= threshold).astype(int)
+print(classification_report(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred))
