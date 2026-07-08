@@ -121,7 +121,7 @@ master.dropna(inplace=True)
 clf_data = master.copy() #Copying Dataset for later work on classification
 
 #Removing Outliers
-'''def remove_outlier(df, column, m=3):
+def remove_outlier(df, column, m=3):
     q1 = df[column].quantile(0.25)
     q3 = df[column].quantile(0.75)
     iqr = q3-q1
@@ -205,7 +205,7 @@ print("Tuned random forest stat :", best_rf.score(X_train,y_train))
 #XGBoost
 xgb = XGBRegressor(random_state=42, n_estimators=200, learning_rate=0.1, max_depth=6, subsample=0.8, colsample_bytree=0.8, objective="reg:squarederror")
 xgb.fit(X_train, y_train)
-print("XGBoost stat :",xgb.score(X_test, y_test))'''
+print("XGBoost stat :",xgb.score(X_test, y_test))
 
 #=======================================================================================================================
 #Classification Model
@@ -245,54 +245,54 @@ X_train, y_train = smote.fit_resample(X_train, y_train)
 '''print(y_train.value_counts())'''
 
 #Logistic Regression
-'''lr = LogisticRegression(random_state=42, max_iter=1000)
+lr = LogisticRegression(random_state=42, max_iter=1000)
 lr.fit(X_train, y_train)
-print(lr.score(X_test, y_test))
+print(lr.score(X_test, y_test)) #88%
 y_pred = lr.predict(X_test)
 print(classification_report(y_test, y_pred))
-print(confusion_matrix(y_test, y_pred))'''
+print(confusion_matrix(y_test, y_pred))
 '''[[16802  1093]
     [ 1065   233]]'''
 
 #Decision Tree
-'''dt = DecisionTreeClassifier(random_state=42)
+dt = DecisionTreeClassifier(random_state=42)
 dt.fit(X_train, y_train)
 y_pred = dt.predict(X_test)
 print(classification_report(y_test, y_pred))
-print(confusion_matrix(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred)) #87%
 print("Train Accuracy :", dt.score(X_train, y_train))
-print("Test Accuracy :", dt.score(X_test, y_test))'''
+print("Test Accuracy :", dt.score(X_test, y_test))
 '''[[16400  1495]
     [  968   330]]'''
 
 #Tuning Decision Tree
-'''param_grid = {"max_depth": [5, 8, 10, 15], "min_samples_split": [2, 5, 10], "min_samples_leaf": [1, 2, 5]}
+param_grid = {"max_depth": [5, 8, 10, 15], "min_samples_split": [2, 5, 10], "min_samples_leaf": [1, 2, 5]}
 cv = StratifiedKFold(n_splits=4, shuffle=True, random_state=42)
-grid = GridSearchCV(estimator=DecisionTreeClassifier(random_state=42), param_grid=param_grid, scoring="r2", cv=cv, n_jobs=-1, verbose=2)
+grid = GridSearchCV(estimator=DecisionTreeClassifier(random_state=42), param_grid=param_grid, scoring="f1", cv=cv, n_jobs=-1, verbose=2)
 grid.fit(X_train, y_train)
 best_dt = grid.best_estimator_
 y_pred = best_dt.predict(X_test)
 print(classification_report(y_test, y_pred))
-print(confusion_matrix(y_test, y_pred))'''
+print(confusion_matrix(y_test, y_pred))  #87.25%
 '''[[16260  1635]
     [  810   488]]'''
 
 #Random Forest
-'''rf = RandomForestClassifier(random_state=42, n_estimators=100, n_jobs=-1)
+rf = RandomForestClassifier(random_state=42, n_estimators=100, n_jobs=-1)
 rf.fit(X_train, y_train)
 y_pred=rf.predict(X_test)
 print(classification_report(y_test, y_pred))
-print(confusion_matrix(y_test, y_pred))'''
+print(confusion_matrix(y_test, y_pred)) #93%
 '''[[17568   327]
      [ 1083   215]]'''
 
-#XGBoost
-'''xgb = XGBClassifier(random_state=42,n_estimators=200,max_depth=6,learning_rate=0.1,objective="binary:logistic",eval_metric="logloss")
+#XGBoost at threshold 0.3
+xgb = XGBClassifier(random_state=42,n_estimators=200,max_depth=6,learning_rate=0.1,objective="binary:logistic",eval_metric="logloss")
 xgb.fit(X_train, y_train)
 y_pred = xgb.predict(X_test)
 y_prob = xgb.predict_proba(X_test)[:, 1]
 print(classification_report(y_test, y_pred))
-print(confusion_matrix(y_test, y_pred))'''
+print(confusion_matrix(y_test, y_pred)) #93%(normal), 89%(threshold changed)
 '''[[17593   302]
     [ 1097   201]]'''
 
@@ -301,11 +301,15 @@ param_grid = {"n_estimators": [100, 200], "max_depth": [10, 15, 20], "min_sample
 cv = StratifiedKFold(n_splits=4, shuffle=True, random_state=42)
 grid_rf = GridSearchCV(estimator=RandomForestClassifier(random_state=42,n_jobs=-1), param_grid=param_grid,scoring="f1",cv=cv,n_jobs=-1,verbose=2)
 grid_rf.fit(X_train, y_train)
-print(grid_rf.best_params)
+print(grid_rf.best_params_)
 print(grid_rf.best_score_)
 best_rf = grid_rf.best_estimator_
 rf_prob = best_rf.predict_proba(X_test)[:, 1]
 threshold = 0.3
 y_pred = (rf_prob >= threshold).astype(int)
 print(classification_report(y_test, y_pred))
-print(confusion_matrix(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred))  #77%
+'''[[13902  3993]
+    [  492   806]]'''
+
+# Sumit Sinha
