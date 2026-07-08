@@ -377,6 +377,3 @@ GitHub: https://github.com/Sumit21Sinha
 Linkedin: https://www.linkedin.com/in/sumit-sinha-454a232a6/
 
 ---
-
-## ⭐ If you found this project useful, consider giving it a star!
-
