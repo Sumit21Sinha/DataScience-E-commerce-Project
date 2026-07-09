@@ -10,7 +10,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.metrics import r2_score
 from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import root_mean_squared_error
+from sklearn.metrics import mean_squared_error
 from xgboost import XGBRegressor
 from imblearn.over_sampling import SMOTE
 from sklearn.linear_model import LogisticRegression
@@ -18,6 +18,8 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
+from sklearn.metrics import f1_score, precision_score, accuracy_score, recall_score
+from sklearn.metrics import roc_auc_score
 
 #Importing Datasets
 customers = pd.read_csv(r"C:\Users\Sumit Sinha\Desktop\DataScience E-Commerce Project\DataSets\olist_customers_dataset.csv")
@@ -121,6 +123,15 @@ master.dropna(inplace=True)
 clf_data = master.copy() #Copying Dataset for later work on classification
 
 #Removing Outliers
+plt.subplot(1,3,1)
+sns.boxplot(y=master["delivery_days"])
+plt.title("Delivery Days")
+plt.subplot(1,3,2)
+sns.boxplot(y=master["approval_days"])
+plt.title("Approval Days")
+plt.subplot(1,3,3)
+sns.boxplot(y=master["estimated_delivery_days"])
+plt.title("Estimated Delivery Days")
 def remove_outlier(df, column, m=3):
     q1 = df[column].quantile(0.25)
     q3 = df[column].quantile(0.75)
@@ -201,6 +212,11 @@ print(grid_rf.best_params_)
 best_rf = grid_rf.best_estimator_
 best_rf_pred = best_rf.predict(X_test)
 print("Tuned random forest stat :", best_rf.score(X_train,y_train))
+
+y_pred = best_rf.predict(X_test)
+print("R² Score :", r2_score(y_test, y_pred))
+print("MAE :", mean_absolute_error(y_test, y_pred))
+print("RMSE :", np.sqrt(mean_squared_error(y_test, y_pred)))
 
 #XGBoost
 xgb = XGBRegressor(random_state=42, n_estimators=200, learning_rate=0.1, max_depth=6, subsample=0.8, colsample_bytree=0.8, objective="reg:squarederror")
@@ -286,15 +302,47 @@ print(confusion_matrix(y_test, y_pred)) #93%
 '''[[17568   327]
      [ 1083   215]]'''
 
-#XGBoost at threshold 0.3
+#XGBoost
 xgb = XGBClassifier(random_state=42,n_estimators=200,max_depth=6,learning_rate=0.1,objective="binary:logistic",eval_metric="logloss")
 xgb.fit(X_train, y_train)
 y_pred = xgb.predict(X_test)
 y_prob = xgb.predict_proba(X_test)[:, 1]
 print(classification_report(y_test, y_pred))
-print(confusion_matrix(y_test, y_pred)) #93%(normal), 89%(threshold changed)
+print(confusion_matrix(y_test, y_pred)) #93%
+
+#Changing threshold
+thresholds = [0.2, 0.3, 0.4, 0.5, 0.6]
+for t in thresholds:
+    y_pred = (y_prob >= t).astype(int)
+    print("="*50)
+    print(f"Threshold = {t}")
+    print("Accuracy :", accuracy_score(y_test, y_pred))
+    print("Precision:", precision_score(y_test, y_pred))
+    print("Recall   :", recall_score(y_test, y_pred))
+    print("F1 Score :", f1_score(y_test, y_pred))
+    print(confusion_matrix(y_test, y_pred))
+
+#XGBoost at threshold 0.3
+xgb = XGBClassifier(random_state=42,n_estimators=200,max_depth=6,learning_rate=0.1,objective="binary:logistic",eval_metric="logloss")
+xgb.fit(X_train, y_train)
+y_prob = xgb.predict_proba(X_test)[:, 1]
+threshold = 0.3
+y_pred = (y_prob >= threshold).astype(int)
+print(classification_report(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred)) #89%
 '''[[17593   302]
     [ 1097   201]]'''
+#Feature Importance
+importance = pd.DataFrame({"Feature": X.columns, "Importance": xgb.feature_importances_})
+importance = importance.sort_values(by="Importance", ascending=False)
+sns.barplot(data=importance.head(15), x="Importance", y="Feature")
+plt.title("Top 15 Most Important Features")
+plt.xlabel("Feature Importance")
+plt.ylabel("")
+plt.tight_layout()
+plt.show()
+roc_auc = roc_auc_score(y_test, y_prob)
+print(roc_auc)
 
 #Tuning Random Forest at Threshold 0.3
 param_grid = {"n_estimators": [100, 200], "max_depth": [10, 15, 20], "min_samples_split": [2, 5], "min_samples_leaf": [1, 2, 5]}
@@ -312,4 +360,4 @@ print(confusion_matrix(y_test, y_pred))  #77%
 '''[[13902  3993]
     [  492   806]]'''
 
-# Sumit Sinha
+# Sumit Sinha :)
